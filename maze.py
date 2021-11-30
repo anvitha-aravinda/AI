@@ -1,226 +1,120 @@
+class Node():
+    """A node class for A* Pathfinding"""
 
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60
-61
-62
-63
-64
-65
-66
-67
-68
-69
-70
-71
-72
-73
-74
-75
-76
-77
-78
-79
-80
-81
-82
-83
-84
-85
-86
-87
-88
-89
-90
-91
-92
-93
-94
-95
-96
-97
-98
-99
-100
-101
-102
-103
-104
-105
-106
-107
-108
-109
-110
-111
-112
-113
-114
-#!/bin/python2.6
- 
-import sys
-from math import sqrt
- 
-class Tile:
- 
-    def __init__(self, char, x, y):
-        self.char = char
+    def __init__(self, parent=None, position=None):
+        self.parent = parent
+        self.position = position
+
         self.g = 0
         self.h = 0
-        self.x = x
-        self.y = y
-        self.parent = None
-        self.setReachable()
- 
-    def setReachable(self):
-        self.reachable = True
-        if self.char in ['-', '+', '|']:
-            self.reachable = False
- 
-    def move_cost(self, other):
-        if other.reachable:
-            return 10
-        else:
-            return 1000
- 
-class AStar:
- 
-    def __init__(self, maze):
-        self.maze = maze
- 
-    def getAdjacent(self, cell):
-        mazeWidth = len(self.maze[0])
-        mazeHeight = len(self.maze)
-        ret = []
-        if cell.y > 0:
-            ret.append(self.getTileAtCoords(cell.x, cell.y - 1))
-        if cell.x < mazeWidth - 1:
-            ret.append(self.getTileAtCoords(cell.x + 1, cell.y))
-        if cell.y < mazeHeight - 1:
-            ret.append(self.getTileAtCoords(cell.x, cell.y + 1))
-        if cell.x > 0:
-            ret.append(self.getTileAtCoords(cell.x - 1, cell.y))
-        return ret
- 
-    def heuristic(self, cell):
-        return sqrt((self.end.x - cell.x)**2 + (self.end.y - cell.y)**2)
- 
-    def constructPath(self, current):
-        path = []
-        while current.parent:
-            path.append(current)
-            current = current.parent
-        path.append(current)
-        return path[::-1]
- 
-    def getTileAtCoords(self, x, y):
-        try:
-            return self.maze[y][x]
-        except KeyError as e:
-            print "Could not find tile at position x: {0} y: {1}".format(x, y)
- 
-    def search(self, current, end):
-        self.end = end
-        openset = set()
-        closedset = set()
-        openset.add(current)
-        while len(openset):
-            current = min(openset, key=lambda o:o.g + o.h)
-            if current == end:
-                return self.constructPath(current)
-            openset.remove(current)
-            closedset.add(current)
-            for node in self.getAdjacent(current):
-                if node in closedset:
+        self.f = 0
+
+    def __eq__(self, other):
+        return self.position == other.position
+
+
+def astar(maze, start, end):
+    """Returns a list of tuples as a path from the given start to the given end in the given maze"""
+
+    # Create start and end node
+    start_node = Node(None, start)
+    start_node.g = start_node.h = start_node.f = 0
+    end_node = Node(None, end)
+    end_node.g = end_node.h = end_node.f = 0
+
+    # Initialize both open and closed list
+    open_list = []
+    closed_list = []
+
+    # Add the start node
+    open_list.append(start_node)
+
+    # Loop until you find the end
+    while len(open_list) > 0:
+
+        # Get the current node
+        current_node = open_list[0]
+        current_index = 0
+        for index, item in enumerate(open_list):
+            if item.f < current_node.f:
+                current_node = item
+                current_index = index
+
+        # Pop current off open list, add to closed list
+        open_list.pop(current_index)
+        closed_list.append(current_node)
+
+        # Found the goal
+        if current_node == end_node:
+            path = []
+            current = current_node
+            while current is not None:
+                path.append(current.position)
+                current = current.parent
+            return path[::-1] # Return reversed path
+
+        # Generate children
+        children = []
+        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]: # Adjacent squares
+
+            # Get node position
+            node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+
+            # Make sure within range
+            if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) -1) or node_position[1] < 0:
+                continue
+
+            # Make sure walkable terrain
+            if maze[node_position[0]][node_position[1]] != 0:
+                continue
+
+            # Create new node
+            new_node = Node(current_node, node_position)
+
+            # Append
+            children.append(new_node)
+
+        # Loop through children
+        for child in children:
+
+            # Child is on the closed list
+            for closed_child in closed_list:
+                if child == closed_child:
                     continue
-                if node in openset:
-                    new_g = current.g + current.move_cost(node)
-                    if node.g > new_g:
-                        node.g = new_g
-                        node.parent = current
-                else:
-                    node.g = current.g + current.move_cost(node)
-                    node.h = self.heuristic(node)
-                    node.parent = current
-                    openset.add(node)
- 
-def getMaze():
-    maze = []
-    for i ,line in enumerate(sys.stdin):
-        line = list (line.rstrip("\r\n"))
-        row = []
-        for j in range(len(line)):
-            row.append(Tile(line[j], j, i))
-        maze.append(row)
-    return maze
- 
-def fillPath(maze):
-    aStar = AStar(maze)
-    for tile in aStar.search(maze[1][0], maze[-2][-1]):
-        maze[tile.y][tile.x].char = "#"
- 
-def printMaze(maze):
-    for row in maze:
-        for tile in row:
-            sys.stdout.write(tile.char)
-        print
- 
-if __name__ == "__main__":
- 
-    maze = getMaze()
-    fillPath(maze)
-    printMaze(maze)
+
+            # Create the f, g, and h values
+            child.g = current_node.g + 1
+            child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
+            child.f = child.g + child.h
+
+            # Child is already in the open list
+            for open_node in open_list:
+                if child == open_node and child.g > open_node.g:
+                    continue
+
+            # Add the child to the open list
+            open_list.append(child)
+
+
+def main():
+
+    maze = [[0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+
+    start = (0, 0)
+    end = (7, 6)
+
+    path = astar(maze, start, end)
+    print(path)
+
+
+if __name__ == '__main__':
+    main()
